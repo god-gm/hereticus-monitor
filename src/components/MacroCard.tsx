@@ -1,3 +1,4 @@
+import { decodeBossName } from '../bossNames'
 import type { BossGroup } from '../types'
 import { BossCard } from './BossCard'
 
@@ -13,6 +14,7 @@ const rarityGradient: Record<string, string> = {
 export function MacroCard({ group }: MacroCardProps) {
   const gradient = rarityGradient[group.rarity] ?? 'from-gray-800/30 to-gray-700/20 border-gray-600/40'
   const totalCards = 1 + group.sideBosses.length
+  const bossDisplayName = decodeBossName(group.boss.unitId, group.boss.type, group.boss.encounterType)
 
   return (
     <div className={`rounded-2xl border bg-gradient-to-br ${gradient} p-4 shadow-lg`}>
@@ -23,7 +25,7 @@ export function MacroCard({ group }: MacroCardProps) {
         >
           {group.rarity}
         </span>
-        <span className="text-gray-300 font-semibold">{group.type}</span>
+        <span className="text-gray-300 font-semibold">{bossDisplayName}</span>
       </div>
 
       <div

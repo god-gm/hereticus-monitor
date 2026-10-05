@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { getBossImageUrl } from '../api'
+import { decodeBossName } from '../bossNames'
 import type { BossTarget } from '../types'
 import { formatNumber } from '../utils'
 import { TargetModal } from './TargetModal'
@@ -14,6 +15,7 @@ export function BossCard({ target, variant = 'main' }: BossCardProps) {
   const [imgError, setImgError] = useState(false)
   const isSide = variant === 'side'
 
+  const displayName = decodeBossName(target.unitId, target.type, target.encounterType)
   const label = isSide ? 'Side Boss' : target.rarity
   const labelColor = isSide
     ? 'text-purple-400 bg-purple-900/40'
@@ -27,12 +29,11 @@ export function BossCard({ target, variant = 'main' }: BossCardProps) {
         className={`flex flex-col rounded-xl border bg-gray-800/60 overflow-hidden transition-all
           ${isSide ? 'border-gray-600' : 'border-gray-500'}`}
       >
-        {/* Image */}
         <div className="relative flex items-center justify-center bg-gray-900 h-40">
           {!imgError ? (
             <img
               src={getBossImageUrl(target.unitId)}
-              alt={target.unitId}
+              alt={displayName}
               className="h-full w-full object-contain"
               onError={() => setImgError(true)}
             />
@@ -46,10 +47,9 @@ export function BossCard({ target, variant = 'main' }: BossCardProps) {
           </span>
         </div>
 
-        {/* Content */}
         <div className="flex flex-col gap-3 p-4 flex-1">
           <div>
-            <div className="text-xs text-gray-400 font-mono truncate">{target.unitId}</div>
+            <div className="text-white font-bold truncate">{displayName}</div>
             <div className="text-xs text-gray-500 mt-0.5">{target.entries.length} attacchi validi</div>
           </div>
 

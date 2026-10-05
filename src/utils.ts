@@ -144,6 +144,9 @@ export function getPerformances(bossGroups: BossGroup[]): PlayerPerformance[] {
     for (const e of target.entries) allPlayerIds.add(e.userId)
   }
 
+  // Fixed denominator: sum of ALL target guild averages (same for every player)
+  const allGuildAvgSum = targets.reduce((s, t) => s + t.guildAvg, 0)
+
   const performances: PlayerPerformance[] = []
 
   for (const userId of allPlayerIds) {
@@ -157,11 +160,9 @@ export function getPerformances(bossGroups: BossGroup[]): PlayerPerformance[] {
     }
 
     if (details.length === 0) continue
-    performances.push({
-      userId,
-      totalDelta: details.reduce((s, d) => s + d.delta, 0),
-      details,
-    })
+    const totalDelta = details.reduce((s, d) => s + d.delta, 0)
+    const deltaPercent = allGuildAvgSum > 0 ? (totalDelta / allGuildAvgSum) * 100 : 0
+    performances.push({ userId, totalDelta, deltaPercent, details })
   }
 
   return performances.sort((a, b) => b.totalDelta - a.totalDelta)

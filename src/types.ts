@@ -66,5 +66,6 @@ export interface PlayerTokenUsage {
 export interface PlayerPerformance {
   userId: string
   totalDelta: number
+  deltaPercent: number
   details: { targetKey: string; playerAvg: number; guildAvg: number; delta: number }[]
 }

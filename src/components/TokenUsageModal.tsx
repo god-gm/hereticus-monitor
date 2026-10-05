@@ -1,5 +1,6 @@
+import { resolvePlayerName } from '../playerData'
 import type { GuildRaidEntry } from '../types'
-import { getTokenUsage, shortUserId } from '../utils'
+import { getTokenUsage } from '../utils'
 import { Modal } from './Modal'
 
 interface TokenUsageModalProps {
@@ -21,10 +22,7 @@ export function TokenUsageModal({ entries, onClose }: TokenUsageModalProps) {
           >
             <div className="flex items-center gap-3">
               <span className="text-gray-500 text-sm w-6">{i + 1}.</span>
-              <div>
-                <div className="font-mono text-amber-300 text-sm">{shortUserId(u.userId)}</div>
-                <div className="text-gray-500 text-xs hidden sm:block">{u.userId}</div>
-              </div>
+              <span className="text-white font-semibold">{resolvePlayerName(u.userId)}</span>
             </div>
             <div className="text-right">
               <div className="text-white font-bold text-lg">{u.count}</div>

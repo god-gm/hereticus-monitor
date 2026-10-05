@@ -1,6 +1,9 @@
 import type { GuildRaidResponse } from './types'
 
-const API_BASE = 'https://api.tacticusgame.com/api/v1'
+const API_BASE =
+  import.meta.env.DEV
+    ? '/api-proxy/api/v1'
+    : 'https://api.tacticusgame.com/api/v1'
 
 export async function fetchGuildRaid(apiKey: string): Promise<GuildRaidResponse> {
   const response = await fetch(`${API_BASE}/guildRaid`, {

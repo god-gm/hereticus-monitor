@@ -1,5 +1,7 @@
+import { decodeBossName } from '../bossNames'
+import { resolvePlayerName } from '../playerData'
 import type { BossTarget } from '../types'
-import { formatNumber, getPlayerStatsForTarget, shortUserId } from '../utils'
+import { formatNumber, getPlayerStatsForTarget } from '../utils'
 import { Modal } from './Modal'
 
 interface TargetModalProps {
@@ -9,10 +11,10 @@ interface TargetModalProps {
 
 export function TargetModal({ target, onClose }: TargetModalProps) {
   const stats = getPlayerStatsForTarget(target)
-  const label = target.encounterType === 'Boss' ? 'Boss' : 'Side Boss'
+  const displayName = decodeBossName(target.unitId, target.type, target.encounterType)
 
   return (
-    <Modal title={`${label}: ${target.unitId}`} onClose={onClose}>
+    <Modal title={displayName} onClose={onClose}>
       <div className="space-y-2">
         <div className="text-gray-400 text-sm mb-4">
           {stats.length} giocatori • Media gilda: {formatNumber(target.avgDamage)}
@@ -25,8 +27,7 @@ export function TargetModal({ target, onClose }: TargetModalProps) {
             >
               <div className="flex items-center gap-3">
                 <span className="text-gray-500 text-sm w-6">{i + 1}.</span>
-                <span className="font-mono text-amber-300 text-sm">{shortUserId(s.userId)}</span>
-                <span className="text-gray-500 text-xs hidden sm:block">{s.userId}</span>
+                <span className="text-white font-semibold">{resolvePlayerName(s.userId)}</span>
               </div>
               <div className="flex items-center gap-4 text-sm">
                 <div className="text-right">

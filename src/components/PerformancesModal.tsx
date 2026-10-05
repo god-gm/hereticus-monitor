@@ -1,5 +1,6 @@
+import { resolvePlayerName } from '../playerData'
 import type { BossGroup } from '../types'
-import { formatNumber, getPerformances, shortUserId } from '../utils'
+import { getPerformances } from '../utils'
 import { Modal } from './Modal'
 
 interface PerformancesModalProps {
@@ -9,49 +10,62 @@ interface PerformancesModalProps {
 
 export function PerformancesModal({ bossGroups, onClose }: PerformancesModalProps) {
   const performances = getPerformances(bossGroups)
+  const maxAbs = Math.max(...performances.map((p) => Math.abs(p.deltaPercent)), 1)
 
   return (
     <Modal title="Performances" onClose={onClose}>
       <div className="space-y-1">
-        <div className="text-gray-400 text-sm mb-4">
-          Classifica per somma delta rispetto alla media di gilda
-        </div>
+        <p className="text-gray-400 text-sm mb-5">
+          Scostamento % dalla media di gilda, sommato su tutti i bersagli affrontati
+        </p>
+
         {performances.map((p, i) => {
-          const isPositive = p.totalDelta >= 0
+          const pct = p.deltaPercent
+          const isPos = pct >= 0
+          // bar fills up to 50% of the chart area proportionally
+          const barWidth = (Math.abs(pct) / maxAbs) * 100
+
           return (
-            <div
-              key={p.userId}
-              className="rounded-lg bg-gray-800 px-4 py-3"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-500 text-sm w-6">{i + 1}.</span>
-                  <div>
-                    <div className="font-mono text-amber-300 text-sm">{shortUserId(p.userId)}</div>
-                    <div className="text-gray-500 text-xs hidden sm:block">{p.userId}</div>
-                  </div>
+            <div key={p.userId} className="flex items-center gap-3 py-1">
+              {/* Rank + name */}
+              <span className="text-gray-500 text-xs w-5 shrink-0 text-right">{i + 1}</span>
+              <span className="text-white text-sm font-semibold w-36 shrink-0 truncate">
+                {resolvePlayerName(p.userId)}
+              </span>
+
+              {/* Bar chart */}
+              <div className="flex-1 flex items-center gap-0 h-6 relative">
+                {/* Left half (negative) */}
+                <div className="flex-1 flex justify-end items-center h-full">
+                  {!isPos && (
+                    <div
+                      className="h-4 rounded-l bg-red-500/80"
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  )}
                 </div>
-                <div className={`text-right font-bold text-lg ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                  {isPositive ? '+' : ''}{formatNumber(p.totalDelta)}
+
+                {/* Center line */}
+                <div className="w-px h-full bg-gray-500 shrink-0" />
+
+                {/* Right half (positive) */}
+                <div className="flex-1 flex justify-start items-center h-full">
+                  {isPos && (
+                    <div
+                      className="h-4 rounded-r bg-green-500/80"
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  )}
                 </div>
               </div>
-              <div className="mt-2 grid grid-cols-1 gap-1 pl-9">
-                {p.details.map((d) => {
-                  const key = d.targetKey.split('::')[1]
-                  const dPos = d.delta >= 0
-                  return (
-                    <div key={d.targetKey} className="flex justify-between text-xs text-gray-500">
-                      <span className="font-mono truncate max-w-[200px]">{key}</span>
-                      <span className={dPos ? 'text-green-500' : 'text-red-500'}>
-                        {dPos ? '+' : ''}{formatNumber(d.delta)}
-                        <span className="text-gray-600 ml-1">
-                          ({formatNumber(d.playerAvg)} vs {formatNumber(d.guildAvg)})
-                        </span>
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
+
+              {/* % label */}
+              <span
+                className={`text-sm font-bold w-14 shrink-0 text-right tabular-nums
+                  ${isPos ? 'text-green-400' : 'text-red-400'}`}
+              >
+                {isPos ? '+' : ''}{pct.toFixed(1)}%
+              </span>
             </div>
           )
         })}

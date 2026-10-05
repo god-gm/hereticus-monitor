@@ -17,7 +17,6 @@ export function Dashboard({ bossGroups, allEntries, season, onReset }: Dashboard
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Header */}
       <header className="sticky top-0 z-40 bg-gray-900/95 backdrop-blur border-b border-gray-800 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
@@ -27,7 +26,7 @@ export function Dashboard({ bossGroups, allEntries, season, onReset }: Dashboard
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowTokenUsage(true)}
-              className="rounded-lg bg-gray-700 hover:bg-gray-600 px-4 py-2 text-sm font-semibold transition-colors"
+              className="rounded-lg bg-indigo-700 hover:bg-indigo-600 px-4 py-2 text-sm font-semibold transition-colors"
             >
               Token Usage
             </button>
@@ -47,7 +46,6 @@ export function Dashboard({ bossGroups, allEntries, season, onReset }: Dashboard
         </div>
       </header>
 
-      {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <div className="text-sm text-gray-500">
           {bossGroups.length} gruppi boss trovati (ultimi 2 leggendari + 3 mitici)
