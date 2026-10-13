@@ -7,8 +7,13 @@ import type {
   PlayerTokenUsage,
 } from './types'
 
-function getBossNumber(unitId: string): number {
-  const match = unitId.match(/GuildBoss(\d+)/)
+function getGroupPrefix(unitId: string): string {
+  const match = unitId.match(/^(GuildBoss\d+)/)
+  return match ? match[1] : unitId
+}
+
+function getBossNumber(prefix: string): number {
+  const match = prefix.match(/GuildBoss(\d+)/)
   return match ? parseInt(match[1]) : 0
 }
 
@@ -20,37 +25,43 @@ function isBattleEntry(entry: GuildRaidEntry): boolean {
   return false
 }
 
-function getLastNLegendaryBossTypes(entries: GuildRaidEntry[], n: number): Set<string> {
-  const legendaryBossUnitIds = [
-    ...new Set(
-      entries
-        .filter((e) => e.rarity === 'Legendary' && e.encounterType === 'Boss')
-        .map((e) => e.unitId),
-    ),
-  ].sort((a, b) => getBossNumber(a) - getBossNumber(b))
-
-  const lastN = legendaryBossUnitIds.slice(-n)
-  const types = new Set(
-    entries.filter((e) => lastN.includes(e.unitId)).map((e) => e.type),
-  )
-  return types
-}
-
 export function buildBossGroups(entries: GuildRaidEntry[]): BossGroup[] {
-  const lastTwoLegendaryTypes = getLastNLegendaryBossTypes(entries, 2)
+  const battleEntries = entries.filter(isBattleEntry)
 
-  const relevantEntries = entries.filter((e) => {
-    if (!isBattleEntry(e)) return false
-    if (e.rarity === 'Mythic') return true
-    if (e.rarity === 'Legendary' && lastTwoLegendaryTypes.has(e.type)) return true
+  // All mythic boss group prefixes (e.g. "GuildBoss11", "GuildBoss8")
+  const mythicPrefixes = new Set(
+    battleEntries
+      .filter((e) => e.rarity === 'Mythic' && e.encounterType === 'Boss')
+      .map((e) => getGroupPrefix(e.unitId)),
+  )
+
+  // Legendary boss group prefixes sorted by boss number, excluding those in Mythic
+  const legendaryBossPrefixes = [
+    ...new Set(
+      battleEntries
+        .filter((e) => e.rarity === 'Legendary' && e.encounterType === 'Boss')
+        .map((e) => getGroupPrefix(e.unitId)),
+    ),
+  ]
+    .sort((a, b) => getBossNumber(a) - getBossNumber(b))
+    .filter((p) => !mythicPrefixes.has(p))
+
+  const lastTwoLegendaryPrefixes = new Set(legendaryBossPrefixes.slice(-2))
+
+  // Keep only relevant entries
+  const relevantEntries = battleEntries.filter((e) => {
+    const prefix = getGroupPrefix(e.unitId)
+    if (e.rarity === 'Mythic' && mythicPrefixes.has(prefix)) return true
+    if (e.rarity === 'Legendary' && lastTwoLegendaryPrefixes.has(prefix)) return true
     return false
   })
 
-  // Group by (rarity, type) to form boss groups
-  const groupMap = new Map<string, { rarity: string; type: string; entries: GuildRaidEntry[] }>()
+  // Group by (rarity, GuildBossN prefix)
+  const groupMap = new Map<string, { rarity: string; prefix: string; entries: GuildRaidEntry[] }>()
   for (const entry of relevantEntries) {
-    const key = `${entry.rarity}::${entry.type}`
-    if (!groupMap.has(key)) groupMap.set(key, { rarity: entry.rarity, type: entry.type, entries: [] })
+    const prefix = getGroupPrefix(entry.unitId)
+    const key = `${entry.rarity}::${prefix}`
+    if (!groupMap.has(key)) groupMap.set(key, { rarity: entry.rarity, prefix, entries: [] })
     groupMap.get(key)!.entries.push(entry)
   }
 
@@ -63,9 +74,10 @@ export function buildBossGroups(entries: GuildRaidEntry[]): BossGroup[] {
     if (bossEntries.length === 0) continue
 
     const bossUnitId = bossEntries[0].unitId
+    const bossType = bossEntries[0].type
     const boss: BossTarget = {
       unitId: bossUnitId,
-      type: group.type,
+      type: bossType,
       rarity: group.rarity,
       encounterType: 'Boss',
       entries: bossEntries,
@@ -73,30 +85,33 @@ export function buildBossGroups(entries: GuildRaidEntry[]): BossGroup[] {
       maxDamage: Math.max(...bossEntries.map((e) => e.damageDealt)),
     }
 
-    // Group side bosses by unitId
     const sideUnitIds = [...new Set(sideEntries.map((e) => e.unitId))]
     const sideBosses: BossTarget[] = sideUnitIds.map((unitId) => {
-      const sideGroup = sideEntries.filter((e) => e.unitId === unitId)
+      const sg = sideEntries.filter((e) => e.unitId === unitId)
       return {
         unitId,
-        type: group.type,
+        type: bossType,
         rarity: group.rarity,
         encounterType: 'SideBoss',
-        entries: sideGroup,
-        avgDamage: avg(sideGroup.map((e) => e.damageDealt)),
-        maxDamage: Math.max(...sideGroup.map((e) => e.damageDealt)),
+        entries: sg,
+        avgDamage: avg(sg.map((e) => e.damageDealt)),
+        maxDamage: Math.max(...sg.map((e) => e.damageDealt)),
       }
     })
 
-    bossGroups.push({ rarity: group.rarity, type: group.type, boss, sideBosses })
+    bossGroups.push({ rarity: group.rarity, type: bossType, boss, sideBosses })
   }
 
-  // Sort: Legendary first (last 2, by boss number desc), then Mythic (by boss number asc)
+  // Sort: Legendary first (ascending boss number), then Mythic (ascending first encounter timestamp)
   return bossGroups.sort((a, b) => {
-    if (a.rarity === b.rarity) {
-      return getBossNumber(a.boss.unitId) - getBossNumber(b.boss.unitId)
+    if (a.rarity !== b.rarity) return a.rarity === 'Legendary' ? -1 : 1
+    if (a.rarity === 'Legendary') {
+      return getBossNumber(getGroupPrefix(a.boss.unitId)) - getBossNumber(getGroupPrefix(b.boss.unitId))
     }
-    return a.rarity === 'Legendary' ? -1 : 1
+    // Mythic: order by earliest attack timestamp
+    const tsA = Math.min(...a.boss.entries.map((e) => e.startedOn))
+    const tsB = Math.min(...b.boss.entries.map((e) => e.startedOn))
+    return tsA - tsB
   })
 }
 
@@ -129,22 +144,18 @@ export function getTokenUsage(entries: GuildRaidEntry[]): PlayerTokenUsage[] {
 }
 
 export function getPerformances(bossGroups: BossGroup[]): PlayerPerformance[] {
-  // Collect all targets (boss + side bosses) with their guild avg
   const targets: { key: string; target: BossTarget; guildAvg: number }[] = []
   for (const group of bossGroups) {
-    const allTargets = [group.boss, ...group.sideBosses]
-    for (const t of allTargets) {
+    for (const t of [group.boss, ...group.sideBosses]) {
       targets.push({ key: `${t.rarity}::${t.unitId}`, target: t, guildAvg: t.avgDamage })
     }
   }
 
-  // Collect all players
   const allPlayerIds = new Set<string>()
   for (const { target } of targets) {
     for (const e of target.entries) allPlayerIds.add(e.userId)
   }
 
-  // Fixed denominator: sum of ALL target guild averages (same for every player)
   const allGuildAvgSum = targets.reduce((s, t) => s + t.guildAvg, 0)
 
   const performances: PlayerPerformance[] = []
